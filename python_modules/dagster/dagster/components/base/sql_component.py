@@ -27,9 +27,8 @@ class SqlComponent(ExecutableComponent, Model, BaseModel, Generic[T], ABC):
 
     execution: Optional[OpSpec] = None
 
-    @property
     @abstractmethod
-    def sql_content(self) -> str:
+    def get_sql_content(self, context: AssetExecutionContext) -> str:
         """The SQL content to execute."""
         ...
 
@@ -89,8 +88,7 @@ class TemplatedSqlComponentMixin:
         Field(default=None, description="Template variables to pass to the SQL template."),
     ]
 
-    @property
-    def sql_content(self) -> str:
+    def get_sql_content(self, context: AssetExecutionContext) -> str:
         template_str = self.sql_template
         if isinstance(template_str, SqlFile):
             template_str = Path(template_str.path).read_text()

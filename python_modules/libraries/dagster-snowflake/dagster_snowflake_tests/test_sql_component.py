@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 from dagster import AssetKey, Definitions
 from dagster._core.definitions.materialize import materialize
+from dagster._core.execution.context.asset_execution_context import AssetExecutionContext
 from dagster.components.testing import scaffold_defs_sandbox
 from dagster_snowflake.components import SnowflakeTemplatedSqlComponent
 from dagster_snowflake.components.sql_component.component import BaseSnowflakeSqlComponent
@@ -44,19 +45,16 @@ def test_snowflake_sql_component(snowflake_connect):
     with setup_snowflake_component(
         component_body=BASIC_SNOWFLAKE_COMPONENT_BODY,
     ) as (component, defs):
-        defs_with_resource = Definitions.merge(
-            defs,
-            Definitions(
-                resources={
-                    "snowflake": SnowflakeResource(
-                        account="test_account",
-                        user="test_user",
-                        password="test_password",
-                        database="TESTDB",
-                        schema="TESTSCHEMA",
-                    )
-                },
-            ),
+        defs_with_resource = defs.with_resources(
+            {
+                "snowflake": SnowflakeResource(
+                    account="test_account",
+                    user="test_user",
+                    password="test_password",
+                    database="TESTDB",
+                    schema="TESTSCHEMA",
+                )
+            },
         )
         asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
         asset_def = defs_with_resource.get_assets_def(asset_key)
@@ -114,19 +112,16 @@ def test_snowflake_sql_component_with_templates(snowflake_connect, sql_template)
         with setup_snowflake_component(
             component_body=component_body,
         ) as (component, defs):
-            defs_with_resource = Definitions.merge(
-                defs,
-                Definitions(
-                    resources={
-                        "snowflake": SnowflakeResource(
-                            account="test_account",
-                            user="test_user",
-                            password="test_password",
-                            database="TESTDB",
-                            schema="TESTSCHEMA",
-                        )
-                    },
-                ),
+            defs_with_resource = defs.with_resources(
+                {
+                    "snowflake": SnowflakeResource(
+                        account="test_account",
+                        user="test_user",
+                        password="test_password",
+                        database="TESTDB",
+                        schema="TESTSCHEMA",
+                    )
+                }
             )
             asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
             asset_def = defs_with_resource.get_assets_def(asset_key)
@@ -171,20 +166,18 @@ def test_snowflake_sql_component_with_execution(snowflake_connect):
     with setup_snowflake_component(
         component_body=component_body,
     ) as (component, defs):
-        defs_with_resource = Definitions.merge(
-            defs,
-            Definitions(
-                resources={
-                    "snowflake": SnowflakeResource(
-                        account="test_account",
-                        user="test_user",
-                        password="test_password",
-                        database="TESTDB",
-                        schema="TESTSCHEMA",
-                    )
-                },
-            ),
+        defs_with_resource = defs.with_resources(
+            {
+                "snowflake": SnowflakeResource(
+                    account="test_account",
+                    user="test_user",
+                    password="test_password",
+                    database="TESTDB",
+                    schema="TESTSCHEMA",
+                )
+            }
         )
+
         asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
         asset_def = defs_with_resource.get_assets_def(asset_key)
 
@@ -197,8 +190,7 @@ class RefreshExternalTableComponent(BaseSnowflakeSqlComponent):
 
     table_name: str
 
-    @property
-    def sql_content(self) -> str:
+    def get_sql_content(self, context: AssetExecutionContext) -> str:
         return f"ALTER TABLE {self.table_name} REFRESH;"
 
 
@@ -216,19 +208,16 @@ def test_custom_snowflake_sql_component(snowflake_connect):
         component_cls=RefreshExternalTableComponent,
     ) as defs_sandbox:
         with defs_sandbox.load(component_body=component_body) as (component, defs):
-            defs_with_resource = Definitions.merge(
-                defs,
-                Definitions(
-                    resources={
-                        "snowflake": SnowflakeResource(
-                            account="test_account",
-                            user="test_user",
-                            password="test_password",
-                            database="TESTDB",
-                            schema="TESTSCHEMA",
-                        )
-                    },
-                ),
+            defs_with_resource = defs.with_resources(
+                {
+                    "snowflake": SnowflakeResource(
+                        account="test_account",
+                        user="test_user",
+                        password="test_password",
+                        database="TESTDB",
+                        schema="TESTSCHEMA",
+                    )
+                },
             )
             asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "EXTERNAL_TABLE"])
             asset_def = defs_with_resource.get_assets_def(asset_key)
