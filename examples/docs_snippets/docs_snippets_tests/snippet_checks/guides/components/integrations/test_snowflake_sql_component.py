@@ -205,7 +205,7 @@ def test_components_docs_snowflake_sql(
 
         # Show the updated project structure
         context.run_command_and_snippet_output(
-            cmd="tree my_project/defs/daily_revenue",
+            cmd="tree my_project/defs",
             snippet_path=f"{context.get_next_snip_number()}-tree-with-sql.txt",
             custom_comparison_fn=compare_tree_output,
         )
