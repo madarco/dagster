@@ -1,0 +1,7 @@
+tree my_project/defs/daily_revenue
+
+my_project/defs/daily_revenue
+├── daily_revenue.sql
+└── defs.yaml
+
+1 directory, 2 files

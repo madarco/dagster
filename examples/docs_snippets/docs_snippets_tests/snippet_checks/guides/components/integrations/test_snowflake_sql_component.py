@@ -160,6 +160,54 @@ def test_components_docs_snowflake_sql(
             snippet_path=f"{context.get_next_snip_number()}-customized-component.yaml",
         )
 
+        # Create an external SQL file
+        context.create_file(
+            Path("my_project") / "defs" / "daily_revenue" / "daily_revenue.sql",
+            contents=textwrap.dedent(
+                """\
+                SELECT
+                  DATE_TRUNC('day', {{ date_column }}) as date,
+                  SUM({{ amount_column }}) as daily_revenue
+                FROM {{ table_name }}
+                WHERE {{ date_column }} >= '{{ start_date }}'
+                GROUP BY DATE_TRUNC('day', {{ date_column }})
+                ORDER BY date
+                """
+            ),
+            snippet_path=f"{context.get_next_snip_number()}-sql-file.sql",
+        )
+
+        # Update the component to reference the external SQL file
+        context.create_file(
+            Path("my_project") / "defs" / "daily_revenue" / "defs.yaml",
+            contents=textwrap.dedent(
+                """\
+                type: dagster_snowflake.SnowflakeTemplatedSqlComponent
+
+                attributes:
+                  sql_template:
+                    path: daily_revenue.sql
+                  assets:
+                    - key: ANALYTICS/DAILY_REVENUE
+                      group_name: analytics
+                      kinds: [snowflake]
+                  sql_template_vars:
+                    table_name: SALES_TRANSACTIONS
+                    date_column: TRANSACTION_DATE
+                    amount_column: SALE_AMOUNT
+                    start_date: "2024-01-01"
+                """
+            ),
+            snippet_path=f"{context.get_next_snip_number()}-file-based-component.yaml",
+        )
+
+        # Show the updated project structure
+        context.run_command_and_snippet_output(
+            cmd="tree my_project/defs/daily_revenue",
+            snippet_path=f"{context.get_next_snip_number()}-tree-with-sql.txt",
+            custom_comparison_fn=compare_tree_output,
+        )
+
         # copy test_snowflake_utils.py to my-project
         shutil.copy(
             Path(__file__).parent / "test_snowflake_utils.py",
@@ -192,6 +240,35 @@ def test_components_docs_snowflake_sql(
         context.run_command_and_snippet_output(
             cmd="dg list defs",
             snippet_path=f"{context.get_next_snip_number()}-list-defs.txt",
+        )
+
+        # Switch back to inline SQL for the launch command to work properly
+        context.create_file(
+            Path("my_project") / "defs" / "daily_revenue" / "defs.yaml",
+            contents=textwrap.dedent(
+                """\
+                type: dagster_snowflake.SnowflakeTemplatedSqlComponent
+
+                attributes:
+                  sql_template: |
+                    SELECT
+                      DATE_TRUNC('day', {{ date_column }}) as date,
+                      SUM({{ amount_column }}) as daily_revenue
+                    FROM {{ table_name }}
+                    WHERE {{ date_column }} >= '{{ start_date }}'
+                    GROUP BY DATE_TRUNC('day', {{ date_column }})
+                    ORDER BY date
+                  assets:
+                    - key: ANALYTICS/DAILY_REVENUE
+                      group_name: analytics
+                      kinds: [snowflake]
+                  sql_template_vars:
+                    table_name: SALES_TRANSACTIONS
+                    date_column: TRANSACTION_DATE
+                    amount_column: SALE_AMOUNT
+                    start_date: "2024-01-01"
+                """
+            ),
         )
 
         # Launch the asset (materialize) after the final dg list defs

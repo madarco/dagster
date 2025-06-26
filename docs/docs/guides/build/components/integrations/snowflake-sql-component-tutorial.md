@@ -54,8 +54,30 @@ You can run `dg list defs` to see the asset corresponding to your component:
 <CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/9-list-defs.txt" />
 </WideContent>
 
-## 5. Launch your assets
+### Using an external SQL file
 
-Now, you can launch your asset using the UI or CLI to execute your SQL query and rebuild the table in Snowflake:
+Instead of embedding SQL directly in your component configuration, you can store SQL in separate files. This approach provides better organization and enables SQL syntax highlighting in your editor.
 
-<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/10-launch.txt" />
+First, create a SQL file with your query:
+
+<CodeExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/9-sql-file.sql" title="my_project/defs/daily_revenue/daily_revenue.sql" language="sql" />
+
+Then update your component configuration to reference the external file:
+
+<CodeExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/10-file-based-component.yaml" title="my_project/defs/daily_revenue/defs.yaml" language="yaml" />
+
+Your project structure will now include the SQL file:
+
+<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/11-tree-with-sql.txt" />
+
+You can verify the component still works correctly:
+
+<WideContent maxSize={1100}>
+<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/12-list-defs.txt" />
+</WideContent>
+
+## 5.. Launch your assets
+
+Once your component is configured, you can launch your assets to execute the SQL queries:
+
+<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/13-launch.txt" />
