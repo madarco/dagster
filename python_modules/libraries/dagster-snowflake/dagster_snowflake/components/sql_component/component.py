@@ -48,10 +48,14 @@ class BaseSnowflakeSqlComponent(SqlComponent, ABC):
         Field(description="The resource key to use for the Snowflake resource."),
     ]
 
-    def execute(self, context: AssetExecutionContext) -> None:
+    def execute(
+        self,
+        context: AssetExecutionContext,
+        component_load_context: ComponentLoadContext,
+    ) -> None:
         """Execute the SQL content using the Snowflake resource."""
         with self.connection.get_connection() as conn:
-            conn.cursor().execute(self.get_sql_content(context))
+            conn.cursor().execute(self.get_sql_content(context, component_load_context))
 
 
 @public

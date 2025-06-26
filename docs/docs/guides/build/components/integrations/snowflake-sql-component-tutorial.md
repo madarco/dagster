@@ -62,21 +62,13 @@ First, create a SQL file with your query:
 
 <CodeExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/9-sql-file.sql" title="my_project/defs/daily_revenue/daily_revenue.sql" language="sql" />
 
+<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/11-tree-with-sql.txt" />
+
 Then update your component configuration to reference the external file:
 
 <CodeExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/10-file-based-component.yaml" title="my_project/defs/daily_revenue/defs.yaml" language="yaml" />
 
-Your project structure will now include the SQL file:
-
-<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/11-tree-with-sql.txt" />
-
-You can verify the component still works correctly:
-
-<WideContent maxSize={1100}>
-<CliInvocationExample path="docs_snippets/docs_snippets/guides/components/integrations/snowflake-sql-component/12-list-defs.txt" />
-</WideContent>
-
-## 5.. Launch your assets
+## 5. Launch your assets
 
 Once your component is configured, you can launch your assets to execute the SQL queries:
 
