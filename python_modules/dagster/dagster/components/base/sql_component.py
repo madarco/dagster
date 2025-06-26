@@ -8,6 +8,7 @@ from jinja2 import Template
 from pydantic import BaseModel, Field
 from typing_extensions import TypeVar
 
+from dagster._annotations import preview, public
 from dagster._core.definitions.result import MaterializeResult
 from dagster._core.execution.context.asset_check_execution_context import AssetCheckExecutionContext
 from dagster._core.execution.context.asset_execution_context import AssetExecutionContext
@@ -19,6 +20,8 @@ from dagster.components.resolved.model import Model, Resolver
 T = TypeVar("T")
 
 
+@public
+@preview
 class SqlComponent(ExecutableComponent, Model, BaseModel, Generic[T], ABC):
     """Base component which executes templated SQL. Subclasses
     implement instructions on where to load the SQL content from

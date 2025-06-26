@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Annotated
 
+from dagster._annotations import preview, public
 from dagster._core.execution.context.asset_execution_context import AssetExecutionContext
 from dagster.components.base.sql_component import SqlComponent, TemplatedSqlComponentMixin
 from pydantic import Field
@@ -8,6 +9,8 @@ from pydantic import Field
 from dagster_snowflake.resources import SnowflakeResource
 
 
+@public
+@preview
 class BaseSnowflakeSqlComponent(SqlComponent[SnowflakeResource], ABC):
     """A component which implements executing a SQL query using a Snowflake resource.
     This is an abstract base class which does not provide instructions on where to source
@@ -28,6 +31,8 @@ class BaseSnowflakeSqlComponent(SqlComponent[SnowflakeResource], ABC):
         return {self.resource_key}
 
 
+@public
+@preview
 class SnowflakeTemplatedSqlComponent(
     TemplatedSqlComponentMixin,
     BaseSnowflakeSqlComponent,
