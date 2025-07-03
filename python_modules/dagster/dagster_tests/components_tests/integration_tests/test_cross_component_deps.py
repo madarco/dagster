@@ -53,14 +53,14 @@ CROSS_COMPONENT_DEPENDENCY_PATH_YAML = (
 def test_dependency_between_components_with_yaml():
     sys.path.append(str(CROSS_COMPONENT_DEPENDENCY_PATH_YAML.parent))
 
-    defs = build_component_defs(CROSS_COMPONENT_DEPENDENCY_PATH_YAML / "defs")
+    defs = dg.build_component_defs(CROSS_COMPONENT_DEPENDENCY_PATH_YAML / "defs")
     assert (
-        AssetKey("downstream_of_all_my_python_defs")
+        dg.AssetKey("downstream_of_all_my_python_defs")
         in defs.resolve_asset_graph().get_all_asset_keys()
     )
     downstream_of_all_my_python_defs = defs.resolve_assets_def("downstream_of_all_my_python_defs")
     assert set(
-        downstream_of_all_my_python_defs.asset_deps[AssetKey("downstream_of_all_my_python_defs")]
+        downstream_of_all_my_python_defs.asset_deps[dg.AssetKey("downstream_of_all_my_python_defs")]
     ) == set(defs.resolve_asset_graph().get_all_asset_keys()) - {
-        AssetKey("downstream_of_all_my_python_defs")
+        dg.AssetKey("downstream_of_all_my_python_defs")
     }
