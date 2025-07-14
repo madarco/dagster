@@ -19,7 +19,7 @@ from dagster.components.resolved.model import Model, Resolver
 
 @public
 @preview
-class SqlComponent(ExecutableComponent, Model, BaseModel, ABC):
+class SqlComponent(ExecutableComponent, Model, ABC):
     """Base component which executes templated SQL. Subclasses
     implement instructions on where to load the SQL content from
     and how to execute it.
