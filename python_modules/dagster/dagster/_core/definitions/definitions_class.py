@@ -812,12 +812,10 @@ class Definitions(IHaveNew):
 
                 component_tree = def_set.component_tree
 
-            # This check is commented out now, since it's possible that particular component
-            # Definitions are resolved by another component
-            # check.invariant(
-            #     not def_set.has_resolved_repository_def(),
-            #     "Definitions object should have been resolved",
-            # )
+            check.invariant(
+                not def_set.has_resolved_repository_def(),
+                "Definitions object should not have been resolved",
+            )
         return Definitions(
             assets=assets,
             schedules=schedules,
