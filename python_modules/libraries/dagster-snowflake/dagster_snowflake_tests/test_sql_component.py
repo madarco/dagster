@@ -1,18 +1,22 @@
+import importlib
 import os
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from unittest import mock
 
 import pytest
+import yaml
 from dagster import AssetKey, Definitions
 from dagster._core.definitions.materialize import materialize
 from dagster._core.execution.context.asset_execution_context import AssetExecutionContext
+from dagster._utils import alter_sys_path
+from dagster.components.core.tree import ComponentTree
 from dagster.components.testing import scaffold_defs_sandbox
 from dagster_snowflake.components import SnowflakeTemplatedSqlComponent
 from dagster_snowflake.components.sql_component.component import BaseSnowflakeSqlComponent
 from dagster_snowflake.constants import SNOWFLAKE_PARTNER_CONNECTION_IDENTIFIER
-from dagster_snowflake.resources import SnowflakeResource
 
 from dagster_snowflake_tests.utils import create_mock_connector
 
@@ -35,6 +39,13 @@ BASIC_SNOWFLAKE_COMPONENT_BODY = {
     "attributes": {
         "sql_template": "SELECT * FROM MY_TABLE;",
         "assets": [{"key": "TESTDB/TESTSCHEMA/TEST_TABLE"}],
+        "connection": {
+            "account": "test_account",
+            "user": "test_user",
+            "password": "test_password",
+            "database": "TESTDB",
+            "schema": "TESTSCHEMA",
+        },
     },
 }
 
@@ -45,22 +56,10 @@ def test_snowflake_sql_component(snowflake_connect):
     with setup_snowflake_component(
         component_body=BASIC_SNOWFLAKE_COMPONENT_BODY,
     ) as (component, defs):
-        defs_with_resource = defs.with_resources(
-            {
-                "snowflake": SnowflakeResource(
-                    account="test_account",
-                    user="test_user",
-                    password="test_password",
-                    database="TESTDB",
-                    schema="TESTSCHEMA",
-                )
-            },
-        )
         asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
-        asset_def = defs_with_resource.get_assets_def(asset_key)
+        asset_def = defs.get_assets_def(asset_key)
         result = materialize(
             [asset_def],
-            resources=defs_with_resource.resources,
         )
         assert result.success
         snowflake_connect.assert_called_once_with(
@@ -73,7 +72,7 @@ def test_snowflake_sql_component(snowflake_connect):
         )
         mock_cursor = snowflake_connect.return_value.cursor.return_value
         mock_cursor.execute.assert_called_once_with("SELECT * FROM MY_TABLE;")
-        assert defs_with_resource.resolve_asset_graph().get_all_asset_keys() == {
+        assert defs.resolve_asset_graph().get_all_asset_keys() == {
             AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
         }
 
@@ -107,27 +106,22 @@ def test_snowflake_sql_component_with_templates(snowflake_connect, sql_template)
                     "date": "2024-03-20",
                     "limit": 100,
                 },
+                "connection": {
+                    "account": "test_account",
+                    "user": "test_user",
+                    "password": "test_password",
+                    "database": "TESTDB",
+                    "schema": "TESTSCHEMA",
+                },
             },
         }
         with setup_snowflake_component(
             component_body=component_body,
         ) as (component, defs):
-            defs_with_resource = defs.with_resources(
-                {
-                    "snowflake": SnowflakeResource(
-                        account="test_account",
-                        user="test_user",
-                        password="test_password",
-                        database="TESTDB",
-                        schema="TESTSCHEMA",
-                    )
-                }
-            )
             asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
-            asset_def = defs_with_resource.get_assets_def(asset_key)
+            asset_def = defs.get_assets_def(asset_key)
             result = materialize(
                 [asset_def],
-                resources=defs_with_resource.resources,
             )
 
             assert result.success
@@ -143,7 +137,7 @@ def test_snowflake_sql_component_with_templates(snowflake_connect, sql_template)
             mock_cursor.execute.assert_called_once_with(
                 "SELECT * FROM TESTDB.TESTSCHEMA.TEST_TABLE WHERE date = '2024-03-20' LIMIT 100"
             )
-            assert defs_with_resource.resolve_asset_graph().get_all_asset_keys() == {
+            assert defs.resolve_asset_graph().get_all_asset_keys() == {
                 AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
             }
     finally:
@@ -161,25 +155,20 @@ def test_snowflake_sql_component_with_execution(snowflake_connect):
             "sql_template": "SELECT * FROM MY_TABLE;",
             "assets": [{"key": "TESTDB/TESTSCHEMA/TEST_TABLE"}],
             "execution": {"description": "This is a test op description"},
+            "connection": {
+                "account": "test_account",
+                "user": "test_user",
+                "password": "test_password",
+                "database": "TESTDB",
+                "schema": "TESTSCHEMA",
+            },
         },
     }
     with setup_snowflake_component(
         component_body=component_body,
     ) as (component, defs):
-        defs_with_resource = defs.with_resources(
-            {
-                "snowflake": SnowflakeResource(
-                    account="test_account",
-                    user="test_user",
-                    password="test_password",
-                    database="TESTDB",
-                    schema="TESTSCHEMA",
-                )
-            }
-        )
-
         asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
-        asset_def = defs_with_resource.get_assets_def(asset_key)
+        asset_def = defs.get_assets_def(asset_key)
 
         # Verify the op description is set correctly
         assert asset_def.op.description == "This is a test op description"
@@ -202,28 +191,23 @@ def test_custom_snowflake_sql_component(snowflake_connect):
         "attributes": {
             "table_name": "TESTDB.TESTSCHEMA.EXTERNAL_TABLE",
             "assets": [{"key": "TESTDB/TESTSCHEMA/EXTERNAL_TABLE"}],
+            "connection": {
+                "account": "test_account",
+                "user": "test_user",
+                "password": "test_password",
+                "database": "TESTDB",
+                "schema": "TESTSCHEMA",
+            },
         },
     }
     with scaffold_defs_sandbox(
         component_cls=RefreshExternalTableComponent,
     ) as defs_sandbox:
         with defs_sandbox.load(component_body=component_body) as (component, defs):
-            defs_with_resource = defs.with_resources(
-                {
-                    "snowflake": SnowflakeResource(
-                        account="test_account",
-                        user="test_user",
-                        password="test_password",
-                        database="TESTDB",
-                        schema="TESTSCHEMA",
-                    )
-                },
-            )
             asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "EXTERNAL_TABLE"])
-            asset_def = defs_with_resource.get_assets_def(asset_key)
+            asset_def = defs.get_assets_def(asset_key)
             result = materialize(
                 [asset_def],
-                resources=defs_with_resource.resources,
             )
             assert result.success
             snowflake_connect.assert_called_once_with(
@@ -238,6 +222,67 @@ def test_custom_snowflake_sql_component(snowflake_connect):
             mock_cursor.execute.assert_called_once_with(
                 "ALTER TABLE TESTDB.TESTSCHEMA.EXTERNAL_TABLE REFRESH;"
             )
-            assert defs_with_resource.resolve_asset_graph().get_all_asset_keys() == {
+            assert defs.resolve_asset_graph().get_all_asset_keys() == {
                 AssetKey(["TESTDB", "TESTSCHEMA", "EXTERNAL_TABLE"])
+            }
+
+
+@mock.patch("snowflake.connector.connect", new_callable=create_mock_connector)
+def test_snowflake_sql_component_with_external_connection(snowflake_connect):
+    """Test referring to a connection defined in a separate component."""
+    with tempfile.TemporaryDirectory() as project_root_str:
+        project_root = Path(project_root_str)
+        defs_folder_path = project_root / "src" / "my_project" / "defs"
+        defs_folder_path.mkdir(parents=True, exist_ok=True)
+
+        execution_body = {
+            "type": "dagster_snowflake.SnowflakeTemplatedSqlComponent",
+            "attributes": {
+                "sql_template": "SELECT * FROM MY_TABLE;",
+                "assets": [{"key": "TESTDB/TESTSCHEMA/TEST_TABLE"}],
+                "connection": "{{ load_component_at_path('sql_connection_component') }}",
+            },
+        }
+        sql_execution_component_path = defs_folder_path / "sql_execution_component"
+        sql_execution_component_path.mkdir(parents=True, exist_ok=True)
+        (sql_execution_component_path / "defs.yaml").write_text(yaml.dump(execution_body))
+
+        connection_body = {
+            "type": "dagster_snowflake.SnowflakeConnectionComponent",
+            "attributes": {
+                "account": "test_account",
+                "user": "test_user",
+                "password": "test_password",
+                "database": "TESTDB",
+                "schema": "TESTSCHEMA",
+            },
+        }
+        sql_connection_component_path = defs_folder_path / "sql_connection_component"
+        sql_connection_component_path.mkdir(parents=True, exist_ok=True)
+        (sql_connection_component_path / "defs.yaml").write_text(yaml.dump(connection_body))
+
+        with alter_sys_path(to_add=[str(project_root / "src")], to_remove=[]):
+            defs = ComponentTree(
+                defs_module=importlib.import_module("my_project.defs"),
+                project_root=Path(project_root),
+            ).build_defs()
+
+            asset_key = AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
+            asset_def = defs.get_assets_def(asset_key)
+            result = materialize(
+                [asset_def],
+            )
+            assert result.success
+            snowflake_connect.assert_called_once_with(
+                account="test_account",
+                user="test_user",
+                password="test_password",
+                database="TESTDB",
+                schema="TESTSCHEMA",
+                application=SNOWFLAKE_PARTNER_CONNECTION_IDENTIFIER,
+            )
+            mock_cursor = snowflake_connect.return_value.cursor.return_value
+            mock_cursor.execute.assert_called_once_with("SELECT * FROM MY_TABLE;")
+            assert defs.resolve_asset_graph().get_all_asset_keys() == {
+                AssetKey(["TESTDB", "TESTSCHEMA", "TEST_TABLE"])
             }
