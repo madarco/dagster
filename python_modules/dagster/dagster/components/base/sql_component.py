@@ -76,7 +76,7 @@ ResolvedSqlTemplate = Annotated[
 ]
 
 
-class TemplatedSqlComponentMixin:
+class TemplatedSqlComponentMixin(Model):
     """A component mixin that builds templated SQL from a string or file.
     User-defined components can inherit from this mixin to incorporate behavior
     of loading SQL from a string or file.
